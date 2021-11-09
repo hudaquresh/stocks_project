@@ -1,0 +1,57 @@
+# Cell Line Matching Analysis #
+# data prep
+# 12/4 - switched to vst (instead of rrt)
+
+#!/usr/bin/env Rscript
+
+#library(sunnys.funcs)
+library(CePa)
+library(tidyverse)
+library(DESeq2)
+
+rank.rank.transform <- function(counts) {
+  ranked.bySample <- apply(counts, 2, rank)
+  median <- apply(ranked.bySample, 1, median)
+  mad <- apply(ranked.bySample, 1, mad)
+  doubleRanked.data <- (ranked.bySample - median)/mad
+  doubleRanked.data
+}
+
+ccle.matrix <- read.gct("Data/CCLE_RNAseq_reads_20180214.gct")
+
+dictionary <- read.delim("Data/entrezdictionary_with_synonyms.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+ens.dictionary <- read.delim("Data/genename_entrez_ensemble_dictionary.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+
+#needed extended dictionary because row names are Ensemble
+full.dictionary <- full_join(dictionary, ens.dictionary)
+dict_genenames <- full.dictionary[,1]
+dict_ensemble <- full.dictionary[,7]
+dict_entrez <- full.dictionary[,5]
+
+#switch names to entrez and remove rows that don't map
+rownames(ccle.matrix) <- sapply(strsplit(rownames(ccle.matrix), split = "[.]"), FUN = function(x){paste(x[1])})
+rownames(ccle.matrix) <- dict_genenames[match(rownames(ccle.matrix),dict_ensemble)]
+ccle.matrix <- ccle.matrix[!is.na(rownames(ccle.matrix)),]
+
+#make a table of cell line names and types from colnames
+ccle.info <- colnames(ccle.matrix)
+ccle.info <- regmatches(ccle.info, regexpr("_", ccle.info), invert = TRUE)
+ccle.info <- matrix(unlist(ccle.info), ncol = 2, byrow = TRUE)
+ccle.info <- as.data.frame(ccle.info, stringsAsFactors = FALSE)
+colnames(ccle.info) <- c("Cell_Line", "Tissue")
+
+#load new esca cell lines and merge with main matrix
+esca.matrix <- read.table("Data/est_counts_genes_kallisto.txt", header=T, check.names=FALSE)
+common.genes <- intersect(rownames(esca.matrix), rownames(ccle.matrix))
+
+merged.mat <- cbind(esca.matrix[common.genes,], ccle.matrix[common.genes,])
+merged.dds <- DESeqDataSetFromMatrix(merged.mat, design = ~samples, colData = data.frame(samples=colnames(merged.mat)))
+merged.vst <- varianceStabilizingTransformation(merged.dds, blind = TRUE)
+
+#merged.mat <- rank.rank.transform(cbind(esca.matrix[common.genes,],ccle.matrix[common.genes,]))
+
+new.esca <- data.frame("Cell_Line" = colnames(esca.matrix), "Tissue" = "OESOPHAGUS-new", stringsAsFactors = F)
+
+ccle.info <- rbind(new.esca, ccle.info)
+
+save(merged.vst, ccle.info, file = "results_sunny/merged.ccle.exp.vst.rda")

@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1543965016879.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1495490367",
+    "id" : "C6393307",
+    "lastKnownWriteTime" : 1543964919,
+    "last_content_update" : 1543965022752,
+    "path" : "/Volumes/projects/STES/Cell_Lines/scripts_sunny/data.prep.normalization.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "6,22",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
